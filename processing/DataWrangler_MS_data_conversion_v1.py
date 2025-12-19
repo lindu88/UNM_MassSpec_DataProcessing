@@ -1,0 +1,112 @@
+#importing all needed libraries
+import os
+import glob
+import xml.etree.ElementTree as ET
+import pandas as pd
+import io
+
+
+#Creating a function for the data extraction that each file will undergo
+def file_processing(file_path):
+
+    # Parsing the XML files to get the root of each XML file loaded into python
+    tree = ET.parse(file_path)
+    root = tree.getroot()
+
+    # Extracting the needed MS data from the <DATA> tag text content into the variable MSDATA and then saving it to the variable raw_data
+    for MSDATA in root.iter('DATA'):
+        raw_data = MSDATA.text
+
+    #if no text is found in DATA tag or data tag doesn't exist, return an empty Dataframe so the batch process doesn't freeze
+    if not raw_data:
+        print(f'No data found in {file_path}. Skipping file...')
+        return pd.DataFrame()
+
+    # assigning the Raw_data as a dataframe using pandas and IO. The string values are separated by ";", so we must set sep=";"
+    # assigning the Raw_data as a dataframe using pandas and IO. The string values are separated by ";", so we must set sep=";"
+    df_raw = pd.read_csv(io.StringIO(raw_data), sep=';')
+
+    # Checking df_raw for troubleshooting. May comment out when actually running
+    # print(df_raw.head(10))
+
+    # Removing the time (minutes) and the RI columns from the dataframe. These are not needed in the matlab file
+    df_processed = df_raw.drop(['RT(minutes) - NOT USED BY IMPORT', 'RI'], axis=1)
+
+    # checking the results (comment out when running actual code)
+    # df_processed.info(verbose=True)
+
+    # Calculating and inserting the scan counts and total scan counts to create the counts column
+    df_processed.insert(0, "temp_name", range(1, len(df_processed) + 1))
+    df_processed.rename(columns={"temp_name": df_processed['temp_name'].max()}, inplace=True)
+
+    # Checking results so far. Can comment out next line when actually running
+    # df_processed.info(verbose=True)
+    # print(df_processed.head(10))
+
+    # Creating a subset for removing negative values, changing all negative values to 0.000 and then saving these new values to the processed dataset
+    subset_processed_data = df_processed.iloc[:, 2:]
+    subset_processed_data = subset_processed_data.mask(subset_processed_data < 0, 0.000)
+    # print(subset_processed_data)
+    # print(df_processed)
+    df_processed.iloc[:, 2:] = subset_processed_data
+    # print(df_processed)
+
+    # multiplying all values in the dataframe by 10E^16 so we do not have any super low numbers for the intensities
+    df_processed.iloc[:, 2:] = df_processed.iloc[:, 2:].mul(1e16)
+
+    # Converting all float64 datatypes to integer64 datatypes by rounding them to the nearest integer instead of truncating them
+    df_processed.iloc[:, 2:] = df_processed.iloc[:, 2:].round(0)
+    # print(df_processed.dtypes)
+    df_processed = df_processed.astype("Int64")
+
+    # Calculating and adding the TIC column
+    df_tic_subset = df_processed.iloc[:, 2:]
+    df_processed.insert(1, "TIC", df_tic_subset.sum(axis=1))
+    df_processed.rename(columns={"TIC": df_processed["TIC"].sum(axis=0)}, inplace=True)
+
+    # Checking results so far. Can comment out when actually running
+    # df_processed.info(verbose=True)
+
+    # Labeling the top of the TIME (ms) column with the max time value of the file
+    df_processed.rename(columns={"RT(milliseconds)": df_processed['RT(milliseconds)'].max()}, inplace=True)
+    # df_processed.info(verbose=True)
+
+    # Checking results so far. Can Comment out when actually running
+    # df_processed.info(verbose=True)
+    # print(df_processed.head(20))
+    return df_processed
+
+# We are now defining the batch processing where the above function will be ran on every file in the specified input folder
+# and then the extracted data from the tag folder will be saved to the output tsv file in the output folder
+# The "**" and recursive = True allows for us to search through all folders in the directory with files ending in .tst
+def batch_processing_MS(input_folder,output_folder, progress_signal, message_signal, pstart, total_files):
+    processed_files = pstart
+    for file_path in glob.glob(os.path.join(input_folder,"**",'*.msv'),recursive= True):
+        try:
+            print(f'Currently Processing File: {file_path}')
+
+            #invoking the above function for individual file processing
+            df = file_processing(file_path)
+
+            # if the dataframe is empty, skip it and move on to the next file
+            if df.empty:
+                continue
+
+            # creating a file name for the output files using the input file name as the base
+            base_name = os.path.basename(file_path.replace('.msv','.mlt'))
+
+            # Specifying which name to name the files should be saved to using the argument "output folder" defined in the function
+            output_file = os.path.join(output_folder, base_name)
+
+
+            #Saving the dataframe generated by each file to their respective TSV files
+            df.to_csv(output_file, sep='\t', index=False)
+            print(f"Saved output to: {output_file}")
+
+            processed_files += 1
+            progress = int((processed_files / total_files) * 100)
+            progress_signal.emit(progress)
+            message_signal.emit(f"Processed {output_file}")
+        except Exception as e:
+            print(f'Error processing {file_path}: {e}')
+    return processed_files
