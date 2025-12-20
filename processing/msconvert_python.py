@@ -7,9 +7,6 @@ def convert_mzml_to_mzxml(input_dir, output_dir, msconvert_exe_path, progress_si
     input_dir = os.path.normpath(input_dir)
     output_dir = os.path.normpath(output_dir)
 
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-
     # Find all mzML files in input directory
     mzml_files = glob(os.path.join(input_dir, "*.mzML"))
 
@@ -23,7 +20,7 @@ def convert_mzml_to_mzxml(input_dir, output_dir, msconvert_exe_path, progress_si
         # Full output path in the output directory
         output_file = os.path.join(output_dir, output_filename)
 
-        # Run msconvert command with absolute path
+        # Run msconvert command with absolute path https://proteowizard.sourceforge.io/tools/msconvert.html
         cmd = [
             msconvert_exe_path,
             mzml_file,
