@@ -42,7 +42,7 @@ class Worker(QObject):
 
             # Process files in msv
             files = QDir(self.extract_dir + "/1-msv").entryList(QDir.Files)
-            total_files = len(files) * 4
+            total_files = len(files) * 3
 
             pf_count = reanme_msv.rename_msv_files(self.extract_dir + "/1-msv", self.start_idx, self.progress, self.message, 0, total_files)
             pf_count = DataWrangler_MS_data_conversion_v1.batch_processing_MS(self.extract_dir + "/1-msv", self.extract_dir + "/3-mlt", self.progress, self.message, pf_count, total_files)
