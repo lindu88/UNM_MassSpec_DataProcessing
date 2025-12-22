@@ -1,5 +1,7 @@
 # Setup and Usage Instructions
 
+Clone with git or download zip
+
 Download Python (tested with **3.12.6**):\
 https://www.python.org/downloads/
 
@@ -29,3 +31,9 @@ ProteoWizard `msconvert.exe`.
 2.  Enter a **start index** to rename the files sequentially (from the
     start index to the index of the last file).\
 3.  Click **Extract and Convert**, then choose an **output folder**.
+
+# BUGS
+1. Progress bar can be incorrect. Wait for the pop up of completion. 
+
+# Considerations
+1. Skips files that are not convertable only for the part that cannot be converted. 

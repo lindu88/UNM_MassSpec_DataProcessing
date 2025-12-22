@@ -28,7 +28,7 @@ def convert_mzml_to_mzxml(input_dir, output_dir, msconvert_exe_path, progress_si
             "--mzXML"
         ]
 
-        # Change working directory to output directory
+        # Change working directory to output directory - msconvert saves in working directory
         original_dir = os.getcwd()
         try:
             os.chdir(output_dir)
