@@ -37,3 +37,4 @@ ProteoWizard `msconvert.exe`.
 
 # Considerations
 1. Skips files that are not convertable only for the part that cannot be converted. 
+2. Make sure zip of files has all msv files in root

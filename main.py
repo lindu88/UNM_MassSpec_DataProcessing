@@ -21,10 +21,14 @@ class Worker(QObject):
         self.ms_convert_path = ms_convert_path
 
         #make directories
-        os.makedirs(extract_dir + "/1-msv", exist_ok=True)
-        os.makedirs(extract_dir + "/3-mlt", exist_ok=True)
-        os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=True)
-        os.makedirs(extract_dir + "/6-mzxml", exist_ok=True)
+        try:
+            os.makedirs(extract_dir + "/1-msv", exist_ok=False)
+            os.makedirs(extract_dir + "/3-mlt", exist_ok=False)
+            os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=False)
+            os.makedirs(extract_dir + "/6-mzxml", exist_ok=False)
+        except OSError:
+            QMessageBox.critical(None, "Error", "Directory already exists. Make a new folder.")
+            raise
 
     def run(self):
         try:
