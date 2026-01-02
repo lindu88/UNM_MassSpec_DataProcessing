@@ -20,7 +20,14 @@ class Worker(QObject):
         self.start_idx = start_idx
         self.ms_convert_path = ms_convert_path
 
-        #make directories
+        # Check if the EXACT path exists (including msconvert.exe)
+        print(f"Checking for executable at: {ms_convert_path}")  # Debug print
+
+        if not os.path.isfile(ms_convert_path):
+            QMessageBox.critical(None, "Error",f"Executable not found at: {ms_convert_path}")
+            raise FileNotFoundError(f"Executable not found at {ms_convert_path}")
+
+        # Make directories
         try:
             os.makedirs(extract_dir + "/1-msv", exist_ok=False)
             os.makedirs(extract_dir + "/3-mlt", exist_ok=False)
@@ -34,10 +41,17 @@ class Worker(QObject):
         try:
             # Extract with progress
             with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
-                total_files = len(zip_ref.namelist())
+                # Get only files in the base folder
+                base_files = [f for f in zip_ref.namelist() if not f.endswith('/') and '/' not in f]
+
+                if not base_files:
+                    self.message.emit("No files to extract in the base folder")
+                    return
+
+                total_files = len(base_files)
                 processed_files = 0
 
-                for file in zip_ref.namelist():
+                for file in base_files:
                     zip_ref.extract(file, self.extract_dir + "/1-msv")
                     processed_files += 1
                     progress = int((processed_files / total_files) * 100)
