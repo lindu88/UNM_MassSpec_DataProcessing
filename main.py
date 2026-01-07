@@ -21,7 +21,7 @@ class Worker(QObject):
         self.ms_convert_path = ms_convert_path
 
         # Check if the EXACT path exists (including msconvert.exe)
-        print(f"Checking for executable at: {ms_convert_path}")  # Debug print
+        print(f"Checking for executable at: {ms_convert_path}")
 
         if not os.path.isfile(ms_convert_path):
             QMessageBox.critical(None, "Error",f"Executable not found at: {ms_convert_path}")
@@ -121,6 +121,7 @@ class ZipExtractorApp(QMainWindow):
         self.layout.addWidget(self.label)
         self.idxspinbox = QSpinBox()
         self.idxspinbox.setMinimum(1)
+        self.idxspinbox.setMaximum(100000)
         self.idxspinbox.setValue(1)
         self.layout.addWidget(self.idxspinbox)
 
