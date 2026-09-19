@@ -29,10 +29,10 @@ class Worker(QObject):
 
         # Make directories
         try:
-            os.makedirs(extract_dir + "/1-msv", exist_ok=False)
-            os.makedirs(extract_dir + "/3-mlt", exist_ok=False)
-            os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=False)
-            os.makedirs(extract_dir + "/6-mzxml", exist_ok=False)
+            os.makedirs(extract_dir + "/1-msv", exist_ok=True)
+            os.makedirs(extract_dir + "/3-mlt", exist_ok=True)
+            os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=True)
+            os.makedirs(extract_dir + "/6-mzxml", exist_ok=True)
         except OSError:
             QMessageBox.critical(None, "Error", "Directory already exists. Make a new folder.")
             raise
@@ -41,10 +41,12 @@ class Worker(QObject):
         try:
             # Extract with progress
             with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
-                # Get only files in the base folder
-                base_files = [f for f in zip_ref.namelist() if not f.endswith('/') and '/' not in f]
+                # Get only files in the base folder -- checked for both c12 and C12 because which one it was and better to check both anyway
+                base_files = [f for f in zip_ref.namelist() if not f.endswith('/') and '/' not in f and ("c12" in f or "C12" in f) and ".msv" in f]
+                print(f"zip file: {zip_ref.namelist()}")
+                print(f"Found {len(base_files)} files in {base_files}")
 
-                if not base_files:
+                if not base_files or base_files == []:
                     self.message.emit("No files to extract in the base folder")
                     return
 
