@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
 from PySide6.QtCore import QDir, QThread, Signal, QObject, QSettings
 from processing import reanme_msv, DataWrangler_MS_data_conversion_v1,AMDIS_batch_data_formatterv1, msconvert_python
 
-
 class Worker(QObject):
     progress = Signal(int)
     message = Signal(str)
@@ -40,34 +39,47 @@ class Worker(QObject):
     def run(self):
         try:
             # Extract with progress
+            msv_dir = self.extract_dir + "/1-msv"
+            os.makedirs(msv_dir, exist_ok=True)
+
             with zipfile.ZipFile(self.zip_path, 'r') as zip_ref:
-                # Get only files in the base folder -- checked for both c12 and C12 because which one it was and better to check both anyway
-                base_files = [f for f in zip_ref.namelist() if not f.endswith('/') and '/' not in f and ("c12" in f or "C12" in f) and ".msv" in f]
+                base_files = [f for f in zip_ref.namelist() if
+                              not f.endswith('/') and "c12" in f.lower() and f.lower().endswith(".msv")]
+
                 print(f"zip file: {zip_ref.namelist()}")
                 print(f"Found {len(base_files)} files in {base_files}")
 
-                if not base_files or base_files == []:
-                    self.message.emit("No files to extract in the base folder")
+                if not base_files:
+                    self.message.emit("No files to extract")
                     return
 
-                total_files = len(base_files)
+                total_extract_files = len(base_files)
                 processed_files = 0
 
                 for file in base_files:
-                    zip_ref.extract(file, self.extract_dir + "/1-msv")
+                    file_name = os.path.basename(file)
+                    output_path = os.path.join(msv_dir, file_name)
+
+                    with zip_ref.open(file) as source, open(output_path, "wb") as target:
+                        target.write(source.read())
+
                     processed_files += 1
-                    progress = int((processed_files / total_files) * 100)
+                    progress = int((processed_files / total_extract_files) * 100)
                     self.progress.emit(progress)
                     self.message.emit(f"Extracting: {file}")
 
             # Process files in msv
-            files = QDir(self.extract_dir + "/1-msv").entryList(QDir.Files)
+            files = QDir(msv_dir).entryList(["*.msv", "*.MSV"], QDir.Files)
             total_files = len(files) * 4
 
-            pf_count = reanme_msv.rename_msv_files(self.extract_dir + "/1-msv", self.start_idx, self.progress, self.message, 0, total_files)
-            pf_count = DataWrangler_MS_data_conversion_v1.batch_processing_MS(self.extract_dir + "/1-msv", self.extract_dir + "/3-mlt", self.progress, self.message, pf_count, total_files)
-            pf_count = AMDIS_batch_data_formatterv1.batch_process_mzml(input_root = self.extract_dir + "/1-msv", output_root = self.extract_dir + "/5-mzmlv2", progress_signal = self.progress, message_signal = self.message, pstart = pf_count, total_files = total_files)
-            msconvert_python.convert_mzml_to_mzxml(self.extract_dir + "/5-mzmlv2", self.extract_dir + "/6-mzxml", self.ms_convert_path, self.progress, self.message, pf_count, total_files)
+            if not files:
+                self.message.emit("No MSV files found after extraction")
+                return
+
+            pf_count = reanme_msv.rename_msv_files(msv_dir, self.start_idx, self.progress, self.message, 0, total_files)
+            pf_count = DataWrangler_MS_data_conversion_v1.batch_processing_MS(msv_dir, self.extract_dir + "/3-mlt",self.progress, self.message, pf_count,total_files)
+            pf_count = AMDIS_batch_data_formatterv1.batch_process_mzml(input_root=msv_dir,output_root=self.extract_dir + "/5-mzmlv2",progress_signal=self.progress,message_signal=self.message, pstart=pf_count,total_files=total_files)
+            msconvert_python.convert_mzml_to_mzxml(self.extract_dir + "/5-mzmlv2", self.extract_dir + "/6-mzxml",self.ms_convert_path, self.progress, self.message, pf_count,total_files)
 
 
 
