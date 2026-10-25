@@ -1,5 +1,6 @@
 import sys
 import os
+import tempfile
 import zipfile
 from PySide6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                                QPushButton, QLabel, QFileDialog, QMessageBox,
@@ -30,7 +31,7 @@ class Worker(QObject):
         try:
             os.makedirs(extract_dir + "/1-msv", exist_ok=True)
             os.makedirs(extract_dir + "/3-mlt", exist_ok=True)
-            os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=True)
+            #os.makedirs(extract_dir + "/5-mzmlv2", exist_ok=True)
             os.makedirs(extract_dir + "/6-mzxml", exist_ok=True)
         except OSError:
             QMessageBox.critical(None, "Error", "Directory already exists. Make a new folder.")
@@ -76,10 +77,11 @@ class Worker(QObject):
                 self.message.emit("No MSV files found after extraction")
                 return
 
-            pf_count = reanme_msv.rename_msv_files(msv_dir, self.start_idx, self.progress, self.message, 0, total_files)
-            pf_count = DataWrangler_MS_data_conversion_v1.batch_processing_MS(msv_dir, self.extract_dir + "/3-mlt",self.progress, self.message, pf_count,total_files)
-            pf_count = AMDIS_batch_data_formatterv1.batch_process_mzml(input_root=msv_dir,output_root=self.extract_dir + "/5-mzmlv2",progress_signal=self.progress,message_signal=self.message, pstart=pf_count,total_files=total_files)
-            msconvert_python.convert_mzml_to_mzxml(self.extract_dir + "/5-mzmlv2", self.extract_dir + "/6-mzxml",self.ms_convert_path, self.progress, self.message, pf_count,total_files)
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                pf_count = reanme_msv.rename_msv_files(msv_dir, self.start_idx, self.progress, self.message, 0, total_files)
+                pf_count = DataWrangler_MS_data_conversion_v1.batch_processing_MS(msv_dir, self.extract_dir + "/3-mlt",self.progress, self.message, pf_count,total_files)
+                pf_count = AMDIS_batch_data_formatterv1.batch_process_mzml(input_root=msv_dir,output_root=tmp_dir,progress_signal=self.progress,message_signal=self.message, pstart=pf_count,total_files=total_files)
+                msconvert_python.convert_mzml_to_mzxml(tmp_dir, self.extract_dir + "/6-mzxml",self.ms_convert_path, self.progress, self.message, pf_count,total_files)
 
 
 
